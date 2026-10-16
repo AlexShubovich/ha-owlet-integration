@@ -21,7 +21,7 @@ PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
 # `type: custom:owlet-sock-card` works without any manual resource setup.
 CARD_FILENAME = "owlet-sock-card.js"
 CARD_URL = f"/{DOMAIN}/{CARD_FILENAME}"
-CARD_VERSION = "2.0.3"
+CARD_VERSION = "2.0.4"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: OwletConfigEntry) -> bool:
@@ -69,4 +69,10 @@ async def _async_register_card(hass: HomeAssistant) -> None:
         registered["card_registered"] = True
         _LOGGER.debug("Registered Owlet Lovelace card at %s", CARD_URL)
     except Exception as err:  # noqa: BLE001 - never block setup over the card
-        _LOGGER.debug("Could not register Owlet Lovelace card: %s", err)
+        # Logged once at setup; visible so a missing card is easy to diagnose.
+        _LOGGER.warning(
+            "Could not register the Owlet dashboard card (%s). You can add it "
+            "manually as a dashboard resource: %s",
+            err,
+            CARD_URL,
+        )

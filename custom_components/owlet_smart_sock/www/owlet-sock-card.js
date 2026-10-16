@@ -181,16 +181,22 @@ class OwletSockCard extends HTMLElement {
   }
 }
 
-customElements.define("owlet-sock-card", OwletSockCard);
+// Guard against being loaded twice (e.g. both auto-registered and added as a
+// manual dashboard resource) - a second define() would throw.
+if (!customElements.get("owlet-sock-card")) {
+  customElements.define("owlet-sock-card", OwletSockCard);
+}
 
 // Make the card appear in the dashboard "Add card" picker.
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "owlet-sock-card",
-  name: "Owlet Smart Sock",
-  description: "Heart rate, oxygen, movement, battery and status for an Owlet sock.",
-  preview: true,
-  documentationURL: "https://github.com/AlexShubovich/ha-owlet-integration",
-});
+if (!window.customCards.some((c) => c.type === "owlet-sock-card")) {
+  window.customCards.push({
+    type: "owlet-sock-card",
+    name: "Owlet Smart Sock",
+    description: "Heart rate, oxygen, movement, battery and status for an Owlet sock.",
+    preview: true,
+    documentationURL: "https://github.com/AlexShubovich/ha-owlet-integration",
+  });
+}
 
 console.info("%c OWLET-SOCK-CARD %c loaded ", "background:#039be5;color:#fff;border-radius:3px 0 0 3px;padding:2px 4px", "background:#333;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px");
