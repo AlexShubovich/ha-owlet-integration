@@ -417,19 +417,24 @@ def _parse_vitals(dsn: str, props: dict[str, dict[str, Any]]) -> OwletSockData:
     low_integrity = alerts.get("low_integrity_reading", False) or (
         not bpm_ok and not spo2_ok
     )
-    base_station_dc = base_station_on != 1 and low_integrity
 
-    if base_station_dc:
-        status = STATUS_DISCONNECTED
-    elif low_integrity:
-        if charge_status == 1:
-            status = STATUS_CHARGING
-        elif charge_status == 2:
-            status = STATUS_CHARGED
-        else:
-            status = STATUS_NO_SIGNAL
-    else:
+    # Decide the overall status, charge state first. Some firmware reports
+    # base_station_on = 0 even while the sock sits charged on the base, so the
+    # charge status is the most reliable "it's on the dock" signal and must
+    # win over the base-station / disconnected heuristics.
+    if not low_integrity:
+        # Valid heart-rate / oxygen readings: actively monitoring the baby.
         status = STATUS_MONITORING
+    elif charge_status == 1:
+        status = STATUS_CHARGING
+    elif charge_status == 2:
+        status = STATUS_CHARGED
+    elif base_station_on:
+        # Powered on the base but not getting a reading (e.g. off the baby).
+        status = STATUS_NO_SIGNAL
+    else:
+        # No reading, not charging, base station not on -> genuinely offline.
+        status = STATUS_DISCONNECTED
 
     monitoring = status == STATUS_MONITORING
 
