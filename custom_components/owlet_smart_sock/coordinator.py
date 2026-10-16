@@ -59,11 +59,15 @@ class OwletCoordinator(DataUpdateCoordinator[dict[str, OwletSockData]]):
         """Authenticate and discover devices once before the first refresh."""
         try:
             await self.client.authenticate()
-            await self.client.async_get_devices()
+            devices = await self.client.async_get_devices()
         except OwletAuthenticationError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except OwletConnectionError as err:
             raise UpdateFailed(str(err)) from err
+
+        if not devices:
+            # Logged once at setup only - never on every poll.
+            _LOGGER.warning("No Owlet Smart Sock found on this account")
 
     async def _async_update_data(self) -> dict[str, OwletSockData]:
         """Fetch the latest vitals for every discovered sock."""

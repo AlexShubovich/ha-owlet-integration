@@ -283,8 +283,6 @@ class OwletClient:
                 )
             )
         self._devices = devices
-        if not devices:
-            _LOGGER.warning("No Owlet Smart Sock found on the account")
         return devices
 
     async def _async_activate_sock(self, dsn: str) -> None:
