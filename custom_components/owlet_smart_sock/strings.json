@@ -68,6 +68,7 @@
       "heart_rate": { "name": "Heart rate" },
       "oxygen_saturation": { "name": "Oxygen saturation" },
       "movement": { "name": "Movement" },
+      "signal": { "name": "Signal" },
       "last_update": { "name": "Last update" }
     },
     "binary_sensor": {

@@ -80,7 +80,7 @@ Each sock is added as a device with the following entities:
 | Oxygen saturation | SpO₂ % (while monitoring) |
 | Movement | Movement % (while monitoring) |
 | Battery | Battery % |
-| Signal strength | BLE RSSI in dBm *(diagnostic, disabled by default)* |
+| Signal | Raw sock signal value (`rsi`; unitless, scale varies by model) *(diagnostic, disabled by default)* |
 | Last update | Timestamp of the most recent reading *(diagnostic, disabled by default)* |
 
 ### Binary sensors

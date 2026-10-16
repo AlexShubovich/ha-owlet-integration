@@ -13,11 +13,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import (
-    PERCENTAGE,
-    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-    EntityCategory,
-)
+from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -87,9 +83,13 @@ SENSORS: tuple[OwletSensorDescription, ...] = (
         value_fn=lambda sock: sock.battery,
     ),
     OwletSensorDescription(
+        # Reported as `rsi`; its scale varies by sock model (Sock 2 is a
+        # negative dBm RSSI, Sock 3 reports a small positive magnitude), so it
+        # is exposed as a neutral unitless "Signal" value rather than being
+        # mislabelled as a dBm signal-strength reading.
         key="signal_strength",
-        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
-        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+        translation_key="signal",
+        icon="mdi:signal",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
