@@ -1,6 +1,6 @@
 {
   "domain": "owlet_smart_sock",
-  "name": "Owlet Smart Sock",
+  "name": "Owlet Smart Sock (Modern)",
   "codeowners": ["@AlexShubovich"],
   "config_flow": true,
   "dependencies": [],
