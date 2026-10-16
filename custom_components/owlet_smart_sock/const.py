@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Final
 
-DOMAIN: Final = "owlet"
+DOMAIN: Final = "owlet_smart_sock"
 
 # Config entry / options keys
 CONF_REGION: Final = "region"
@@ -48,9 +48,11 @@ ANDROID_PACKAGE: Final = "com.owletcare.owletcare"
 ANDROID_CERT: Final = "2A3BC26DB0B8B0792DBE28E6FFDC2598F9B12B74"
 
 # Polling cadence. These are vital signs, so the default is intentionally
-# frequent, but it is user-configurable from the options flow.
+# frequent, but it is user-configurable from the options flow. The sock itself
+# streams real-time vitals roughly every 3 seconds, so there is no benefit to
+# polling faster than that - 3 seconds is the enforced minimum.
 DEFAULT_SCAN_INTERVAL: Final = 10
-MIN_SCAN_INTERVAL: Final = 5
+MIN_SCAN_INTERVAL: Final = 3
 MAX_SCAN_INTERVAL: Final = 300
 DEVICE_LIST_REFRESH: Final = timedelta(hours=1)
 

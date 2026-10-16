@@ -1,5 +1,5 @@
 {
-  "domain": "owlet",
+  "domain": "owlet_smart_sock",
   "name": "Owlet Smart Sock",
   "codeowners": ["@AlexShubovich"],
   "config_flow": true,

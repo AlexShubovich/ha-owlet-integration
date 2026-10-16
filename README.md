@@ -26,7 +26,7 @@ flow, device discovery, a data update coordinator, and proper entities.
   Assistant device with its own entities.
 - 🌍 **World & Europe regions** supported.
 - ❤️ **Smart Sock 2 and 3** supported (real-time vitals on the Sock 3).
-- ⏱️ **Configurable polling interval** via the options flow.
+- ⏱️ **Configurable polling interval** via the options flow (3–300 s).
 - 🩺 Clean sensors and binary sensors (see below) with long-term statistics.
 
 ## Installation
@@ -40,8 +40,18 @@ flow, device discovery, a data update coordinator, and proper entities.
 
 ### Manual
 
-Copy `custom_components/owlet` into your Home Assistant `config/custom_components`
-directory and restart Home Assistant.
+Copy `custom_components/owlet_smart_sock` into your Home Assistant
+`config/custom_components` directory and restart Home Assistant.
+
+### Running alongside the original `owlet` integration
+
+This integration uses its own domain, **`owlet_smart_sock`**, and its own
+folder (`custom_components/owlet_smart_sock`). It therefore installs and runs
+**side by side** with the original
+[`jlamendo/ha-sensor.owlet`](https://github.com/jlamendo/ha-sensor.owlet)
+(domain `owlet`, configured in YAML) without overwriting it or conflicting with
+its entities. Once you're happy with this integration you can remove the old
+`sensor: - platform: owlet` block from your `configuration.yaml`.
 
 ## Configuration
 
@@ -51,6 +61,11 @@ directory and restart Home Assistant.
 
 That's it — your socks and their entities appear automatically. To change how
 often vitals are polled, open the integration and click **Configure**.
+
+The Smart Sock streams real-time vitals roughly **every 3 seconds**, so the
+update interval can be set anywhere from **3 to 300 seconds** (default: 10).
+Polling faster than 3 seconds brings no fresher data — the minimum is capped at
+3 seconds — while slower intervals reduce load on the Owlet cloud.
 
 ## Entities
 
