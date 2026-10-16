@@ -67,6 +67,27 @@ update interval can be set anywhere from **3 to 300 seconds** (default: 10).
 Polling faster than 3 seconds brings no fresher data — the minimum is capped at
 3 seconds — while slower intervals reduce load on the Owlet cloud.
 
+## Dashboard card
+
+A custom Lovelace card ships with the integration and is **registered
+automatically** — no manual resource setup. After installing and restarting,
+add a card to any dashboard and either pick **Owlet Smart Sock** from the card
+picker, or add it in YAML:
+
+```yaml
+type: custom:owlet-sock-card
+entity: sensor.owlet_baby_monitor_status   # your sock's Status sensor
+```
+
+The card shows status, heart rate, oxygen, movement and battery at a glance,
+pulses the heart while monitoring, and highlights any active alerts. It derives
+the other entities from the Status entity automatically; you can override any of
+them with the optional `name`, `heart_rate`, `oxygen`, `movement` and `battery`
+options.
+
+> If the card doesn't appear right after updating, hard-refresh your browser
+> (Ctrl+Shift+R) so it loads the new JavaScript.
+
 ## Entities
 
 Each sock is added as a device with the following entities:
