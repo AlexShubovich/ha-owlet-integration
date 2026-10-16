@@ -111,6 +111,11 @@ class OwletClient:
         self._token_expires: float = 0.0
         self._auth_lock = asyncio.Lock()
         self._devices: list[OwletDevice] = []
+        # Once credentials are rejected we refuse to contact the login
+        # endpoints again. Owlet/Firebase rate-limit and can lock an account
+        # for a long time if bad credentials are retried in a loop. The flag is
+        # only cleared by a successful login; a reauth creates a fresh client.
+        self._auth_failed = False
 
     @property
     def devices(self) -> list[OwletDevice]:
@@ -118,11 +123,27 @@ class OwletClient:
         return self._devices
 
     async def authenticate(self) -> None:
-        """Run the full three-step login and cache an Ayla access token."""
+        """Run the full three-step login and cache an Ayla access token.
+
+        If a previous attempt was rejected we fail fast without contacting the
+        login servers again, so bad credentials can never be retried in a loop.
+        """
         async with self._auth_lock:
-            jwt = await self._firebase_login()
-            mini_token = await self._owletdata_login(jwt)
-            await self._ayla_login(mini_token)
+            if self._auth_failed:
+                raise OwletAuthenticationError(
+                    "Owlet credentials were rejected; not retrying to avoid "
+                    "locking the account. Re-enter your password to try again."
+                )
+            try:
+                jwt = await self._firebase_login()
+                mini_token = await self._owletdata_login(jwt)
+                await self._ayla_login(mini_token)
+            except OwletAuthenticationError:
+                # Latch on rejected credentials. Transient connection errors
+                # are not latched, so genuine outages still recover on their
+                # own once connectivity returns.
+                self._auth_failed = True
+                raise
 
     async def _firebase_login(self) -> str:
         """Exchange credentials for a Firebase JWT (step 1)."""
