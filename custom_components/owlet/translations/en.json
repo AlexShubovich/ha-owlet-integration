@@ -1,0 +1,83 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Owlet account",
+        "description": "Sign in with the email and password you use in the Owlet app. Your credentials are sent only to Owlet's servers and are stored locally by Home Assistant.",
+        "data": {
+          "username": "Email",
+          "password": "Password",
+          "region": "Region"
+        },
+        "data_description": {
+          "region": "Choose Europe if your Owlet account was created in Europe, otherwise choose World."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Owlet",
+        "description": "The password for {username} is no longer valid. Enter the current password to reconnect.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password.",
+      "cannot_connect": "Failed to connect to Owlet. Check your internet connection and try again.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This Owlet account is already set up.",
+      "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Owlet options",
+        "data": {
+          "scan_interval": "Update interval"
+        },
+        "data_description": {
+          "scan_interval": "How often to poll Owlet for new vitals, in seconds. Lower values update faster but increase load on the Owlet cloud."
+        }
+      }
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "world": "World",
+        "europe": "Europe"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "monitoring": "Monitoring",
+          "charging": "Charging",
+          "charged": "Charged",
+          "no_signal": "No signal",
+          "disconnected": "Disconnected",
+          "error": "Error"
+        }
+      },
+      "heart_rate": { "name": "Heart rate" },
+      "oxygen_saturation": { "name": "Oxygen saturation" },
+      "movement": { "name": "Movement" },
+      "last_update": { "name": "Last update" }
+    },
+    "binary_sensor": {
+      "monitoring": { "name": "Monitoring" },
+      "base_station": { "name": "Base station" },
+      "high_heart_rate": { "name": "High heart rate alert" },
+      "low_heart_rate": { "name": "Low heart rate alert" },
+      "low_oxygen": { "name": "Low oxygen alert" },
+      "sock_disconnected": { "name": "Sock connection" },
+      "low_integrity_reading": { "name": "Low integrity reading" }
+    }
+  }
+}

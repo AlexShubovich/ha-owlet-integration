@@ -1,0 +1,13 @@
+{
+  "domain": "owlet",
+  "name": "Owlet Smart Sock",
+  "codeowners": ["@AlexShubovich"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/AlexShubovich/ha-owlet-integration",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/AlexShubovich/ha-owlet-integration/issues",
+  "requirements": [],
+  "version": "2.0.0"
+}
