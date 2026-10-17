@@ -30,17 +30,17 @@ const STATUS_META = {
 class OwletSockCard extends HTMLElement {
   setConfig(config) {
     if (!config || !config.entity) {
-      throw new Error("You must set 'entity' to the sock's Status sensor, e.g. sensor.owlet_..._status");
-    }
-    if (!config.entity.endsWith("_status") && !config.heart_rate) {
-      throw new Error("'entity' should be the Status sensor (ending in _status), or set the individual entities explicitly.");
+      throw new Error("You must set 'entity' to one of the sock's sensors (ideally the Status sensor, e.g. sensor.owlet_..._status).");
     }
     this._config = config;
+    this._refined = false;
     this._resolve();
     this._build();
   }
 
   _resolve() {
+    // Initial guess from the entity id prefix; refined from the device
+    // registry once hass is available (see _refineFromDevice).
     const c = this._config;
     const prefix = c.entity.replace(/_status$/, "");
     this._entities = {
@@ -52,8 +52,37 @@ class OwletSockCard extends HTMLElement {
     };
   }
 
+  _refineFromDevice() {
+    // Resolve siblings via the device registry, so the user only has to pick
+    // one entity and any ``_2`` style renames are handled correctly.
+    if (!this._hass || !this._hass.entities) return;
+    const reg = this._hass.entities[this._config.entity];
+    const deviceId = reg && reg.device_id;
+    if (!deviceId) return;
+
+    const found = {};
+    for (const eid of Object.keys(this._hass.entities)) {
+      if (this._hass.entities[eid].device_id !== deviceId) continue;
+      for (const [key, suf] of Object.entries(VITAL_SUFFIXES)) {
+        if (eid.endsWith(suf)) found[key] = eid;
+      }
+      if (eid.endsWith("_status")) found.status = eid;
+    }
+
+    const c = this._config;
+    if (!c.entity.endsWith("_status") && found.status) {
+      this._entities.status = found.status;
+    }
+    this._entities.heart_rate = c.heart_rate || found.heart_rate || this._entities.heart_rate;
+    this._entities.oxygen = c.oxygen || found.oxygen || this._entities.oxygen;
+    this._entities.movement = c.movement || found.movement || this._entities.movement;
+    this._entities.battery = c.battery || found.battery || this._entities.battery;
+    this._refined = true;
+  }
+
   set hass(hass) {
     this._hass = hass;
+    if (!this._refined) this._refineFromDevice();
     this._update();
   }
 
@@ -179,6 +208,63 @@ class OwletSockCard extends HTMLElement {
     const status = Object.keys(hass.states).find((e) => e.endsWith("_status") && e.startsWith("sensor."));
     return { type: "custom:owlet-sock-card", entity: status || "sensor.owlet_smart_sock_status" };
   }
+
+  static getConfigElement() {
+    return document.createElement("owlet-sock-card-editor");
+  }
+}
+
+/* Visual editor: a simple ha-form with an entity picker so the sock can be
+ * chosen from a dropdown instead of being typed. */
+const EDITOR_SCHEMA = [
+  {
+    name: "entity",
+    required: true,
+    selector: { entity: { integration: "owlet_smart_sock", domain: "sensor" } },
+  },
+  { name: "name", selector: { text: {} } },
+];
+const EDITOR_LABELS = {
+  entity: "Sock Status sensor",
+  name: "Card name (optional)",
+};
+
+class OwletSockCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = config;
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  _render() {
+    if (!this._hass || !this._config) return;
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        this.dispatchEvent(
+          new CustomEvent("config-changed", {
+            detail: { config: ev.detail.value },
+            bubbles: true,
+            composed: true,
+          })
+        );
+      });
+      this.appendChild(this._form);
+    }
+    this._form.hass = this._hass;
+    this._form.schema = EDITOR_SCHEMA;
+    this._form.data = this._config;
+    this._form.computeLabel = (s) => EDITOR_LABELS[s.name] || s.name;
+  }
+}
+
+if (!customElements.get("owlet-sock-card-editor")) {
+  customElements.define("owlet-sock-card-editor", OwletSockCardEditor);
 }
 
 // Guard against being loaded twice (e.g. both auto-registered and added as a

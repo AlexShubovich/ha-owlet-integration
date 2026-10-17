@@ -21,7 +21,7 @@ PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
 # `type: custom:owlet-sock-card` works without any manual resource setup.
 CARD_FILENAME = "owlet-sock-card.js"
 CARD_URL = f"/{DOMAIN}/{CARD_FILENAME}"
-CARD_VERSION = "2.0.4"
+CARD_VERSION = "2.0.5"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: OwletConfigEntry) -> bool:
