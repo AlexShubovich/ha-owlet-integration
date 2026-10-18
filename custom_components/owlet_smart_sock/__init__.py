@@ -15,7 +15,11 @@ from .coordinator import OwletConfigEntry, OwletCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
+PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
 
 # Lovelace card shipped with the integration and auto-registered so that
 # `type: custom:owlet-sock-card` works without any manual resource setup.

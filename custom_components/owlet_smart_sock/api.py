@@ -42,11 +42,22 @@ ALERT_PROPERTIES: dict[str, str] = {
     "HIGH_HR_ALRT": "high_heart_rate",
     "LOW_HR_ALRT": "low_heart_rate",
     "LOW_OX_ALRT": "low_oxygen",
+    "HIGH_OX_ALRT": "high_oxygen",
     "SOCK_DISCON_ALRT": "sock_disconnected",
     "DISCOMFORT_ALRT": "discomfort",
+    "LOST_POWER_ALRT": "lost_power",
+    "SOCK_OFF": "sock_off",
 }
 
 REQUEST_TIMEOUT = ClientTimeout(total=30)
+
+# Ayla command properties (writes). value is a JSON string (escaped).
+CMD_BASE_STATION = "BASE_STATION_ON_CMD"
+CMD_ALERT_PAUSE = "ALRT_PAUSE_CMD"
+
+# The real app only sends the APP_ACTIVE heartbeat about every 20 seconds, so
+# we throttle it rather than posting it on every (as fast as 3s) poll.
+APP_ACTIVE_INTERVAL = 20
 
 
 class OwletError(Exception):
@@ -81,7 +92,9 @@ class OwletSockData:
     heart_rate: int | None = None
     oxygen_saturation: int | None = None
     movement: int | None = None
+    skin_temperature: float | None = None
     battery: int | None = None
+    battery_time_remaining: int | None = None
     signal_strength: int | None = None
     charge_status: int | None = None
     base_station_on: bool | None = None
@@ -111,6 +124,7 @@ class OwletClient:
         self._token_expires: float = 0.0
         self._auth_lock = asyncio.Lock()
         self._devices: list[OwletDevice] = []
+        self._last_active: dict[str, float] = {}
         # Once credentials are rejected we refuse to contact the login
         # endpoints again. Owlet/Firebase rate-limit and can lock an account
         # for a long time if bad credentials are retried in a loop. The flag is
@@ -307,16 +321,45 @@ class OwletClient:
         return devices
 
     async def _async_activate_sock(self, dsn: str) -> None:
-        """Ask the sock to start streaming real-time vitals."""
+        """Send the APP_ACTIVE heartbeat, throttled to ~20s like the app."""
+        now = time.time()
+        if now - self._last_active.get(dsn, 0.0) < APP_ACTIVE_INTERVAL:
+            return
         try:
             await self._api_post(
                 f"/dsns/{dsn}/properties/APP_ACTIVE/datapoints.json",
                 {"datapoint": {"metadata": {}, "value": 1}},
             )
+            self._last_active[dsn] = now
         except OwletConnectionError as err:
             # Activation is best-effort; log and continue to read whatever
             # the sock last reported.
             _LOGGER.debug("Could not activate sock %s: %s", dsn, err)
+
+    async def _async_write_datapoint(
+        self, dsn: str, prop: str, value: object
+    ) -> None:
+        """Write a datapoint to a command property (= issue a command)."""
+        await self._api_post(
+            f"/dsns/{dsn}/properties/{prop}/datapoints.json",
+            {"datapoint": {"metadata": {}, "value": value}},
+        )
+
+    async def async_set_base_station(self, dsn: str, turn_on: bool) -> None:
+        """Turn the base station (monitoring) on or off.
+
+        Mirrors the app: the command value is a JSON *string*, and a paired
+        alert-pause command is sent alongside it.
+        """
+        ts = int(time.time())
+        await self._async_write_datapoint(
+            dsn,
+            CMD_BASE_STATION,
+            json.dumps({"ts": ts, "val": "true" if turn_on else "false"}),
+        )
+        await self._async_write_datapoint(
+            dsn, CMD_ALERT_PAUSE, json.dumps({"ts": ts})
+        )
 
     async def async_get_vitals(self, dsn: str) -> OwletSockData:
         """Fetch and normalise the current vitals for a single sock."""
@@ -351,6 +394,16 @@ def _as_int(value: Any) -> int | None:
         return None
 
 
+def _as_float(value: Any) -> float | None:
+    """Best-effort conversion of a property value to ``float``."""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _parse_vitals(dsn: str, props: dict[str, dict[str, Any]]) -> OwletSockData:
     """Translate raw Ayla properties into an :class:`OwletSockData`.
 
@@ -360,14 +413,17 @@ def _parse_vitals(dsn: str, props: dict[str, dict[str, Any]]) -> OwletSockData:
     heart_rate: int | None = None
     oxygen_saturation: int | None = None
     movement: int | None = None
+    skin_temperature: float | None = None
     battery: int | None = None
+    battery_time_remaining: int | None = None
     signal_strength: int | None = None
     charge_status: int | None = None
     base_station_on: int | None = None
+    no_reading_flag: int | None = None
     updated_at: datetime | None = None
 
     if "REAL_TIME_VITALS" in props:
-        # Smart Sock 3
+        # Smart Sock 3 / Smart Sock 4 (shared REAL_TIME_VITALS blob)
         try:
             rt = json.loads(props["REAL_TIME_VITALS"]["value"])
         except (json.JSONDecodeError, KeyError, TypeError):
@@ -375,10 +431,13 @@ def _parse_vitals(dsn: str, props: dict[str, dict[str, Any]]) -> OwletSockData:
         heart_rate = _as_int(rt.get("hr"))
         oxygen_saturation = _as_int(rt.get("ox"))
         movement = _as_int(rt.get("mv"))
+        skin_temperature = _as_float(rt.get("st"))
         battery = _as_int(rt.get("bat"))
-        signal_strength = _as_int(rt.get("rsi"))
+        battery_time_remaining = _as_int(rt.get("btt"))
+        signal_strength = _as_int(rt.get("rsi"))  # Wi-Fi signal
         charge_status = _as_int(rt.get("chg"))
         base_station_on = _as_int(rt.get("bso"))
+        no_reading_flag = _as_int(rt.get("srf"))  # 1 = no valid reading
         updated = props["REAL_TIME_VITALS"].get("data_updated_at")
         if updated:
             updated_at = dt_util.parse_datetime(updated)
@@ -414,8 +473,13 @@ def _parse_vitals(dsn: str, props: dict[str, dict[str, Any]]) -> OwletSockData:
     spo2_ok = bool(
         oxygen_saturation and oxygen_saturation > 0 and not low_ox_alert
     )
-    low_integrity = alerts.get("low_integrity_reading", False) or (
-        not bpm_ok and not spo2_ok
+    # `srf` (Smart Sock 3/4) is the device's own "no valid reading" flag - the
+    # most direct signal that the sock isn't reading, used alongside the alert
+    # property and the hr/ox heuristic.
+    low_integrity = (
+        alerts.get("low_integrity_reading", False)
+        or no_reading_flag == 1
+        or (not bpm_ok and not spo2_ok)
     )
 
     # Decide the overall status, charge state first. Some firmware reports
@@ -446,7 +510,9 @@ def _parse_vitals(dsn: str, props: dict[str, dict[str, Any]]) -> OwletSockData:
         heart_rate=heart_rate if monitoring else None,
         oxygen_saturation=oxygen_saturation if monitoring else None,
         movement=movement if monitoring else None,
+        skin_temperature=skin_temperature if monitoring else None,
         battery=battery,
+        battery_time_remaining=battery_time_remaining,
         signal_strength=signal_strength,
         charge_status=charge_status,
         base_station_on=(

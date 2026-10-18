@@ -68,7 +68,9 @@
       "heart_rate": { "name": "Heart rate" },
       "oxygen_saturation": { "name": "Oxygen saturation" },
       "movement": { "name": "Movement" },
-      "signal": { "name": "Signal" },
+      "skin_temperature": { "name": "Skin temperature" },
+      "battery_time_remaining": { "name": "Battery time remaining" },
+      "wifi_signal": { "name": "Wi-Fi signal" },
       "last_update": { "name": "Last update" }
     },
     "binary_sensor": {
@@ -77,8 +79,14 @@
       "high_heart_rate": { "name": "High heart rate alert" },
       "low_heart_rate": { "name": "Low heart rate alert" },
       "low_oxygen": { "name": "Low oxygen alert" },
+      "high_oxygen": { "name": "High oxygen alert" },
+      "lost_power": { "name": "Lost power alert" },
+      "sock_off": { "name": "Sock off" },
       "sock_disconnected": { "name": "Sock connection" },
       "low_integrity_reading": { "name": "Low integrity reading" }
+    },
+    "switch": {
+      "base_station_switch": { "name": "Base station" }
     }
   }
 }

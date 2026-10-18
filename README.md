@@ -100,8 +100,10 @@ Each sock is added as a device with the following entities:
 | Heart rate | Beats per minute (while monitoring) |
 | Oxygen saturation | SpO₂ % (while monitoring) |
 | Movement | Movement % (while monitoring) |
+| Skin temperature | °C (Smart Sock 3/4, while monitoring) |
 | Battery | Battery % |
-| Signal | Raw sock signal value (`rsi`; unitless, scale varies by model) *(diagnostic, disabled by default)* |
+| Battery time remaining | Estimated runtime in minutes (Smart Sock 3/4) *(diagnostic)* |
+| Wi-Fi signal | Sock Wi-Fi signal (`rsi`; unitless, scale varies by model) *(diagnostic, disabled by default)* |
 | Last update | Timestamp of the most recent reading *(diagnostic, disabled by default)* |
 
 ### Binary sensors
@@ -115,8 +117,17 @@ Each sock is added as a device with the following entities:
 | High heart rate alert | problem | High heart-rate alert is active |
 | Low heart rate alert | problem | Low heart-rate alert is active |
 | Low oxygen alert | problem | Low oxygen alert is active |
+| High oxygen alert | problem | High oxygen alert is active |
+| Lost power alert | problem | The base station lost power |
+| Sock off | — | The sock is off the baby *(diagnostic)* |
 | Sock connection | connectivity | The sock is connected |
 | Low integrity reading | problem | The sock can't get a reliable reading *(diagnostic)* |
+
+### Switch
+
+| Entity | Description |
+| --- | --- |
+| Base station | Turns the base station (monitoring) on/off. **Writes a command to the live device**, so it is **disabled by default** — enable it per sock if you want this control. |
 
 ## Credits
 

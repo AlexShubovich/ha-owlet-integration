@@ -13,7 +13,12 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, EntityCategory
+from homeassistant.const import (
+    PERCENTAGE,
+    EntityCategory,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -76,6 +81,16 @@ SENSORS: tuple[OwletSensorDescription, ...] = (
         value_fn=lambda sock: sock.movement,
     ),
     OwletSensorDescription(
+        # Skin temperature from REAL_TIME_VITALS `st` (Smart Sock 3/4).
+        key="skin_temperature",
+        translation_key="skin_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda sock: sock.skin_temperature,
+    ),
+    OwletSensorDescription(
         key="battery",
         device_class=SensorDeviceClass.BATTERY,
         native_unit_of_measurement=PERCENTAGE,
@@ -83,13 +98,22 @@ SENSORS: tuple[OwletSensorDescription, ...] = (
         value_fn=lambda sock: sock.battery,
     ),
     OwletSensorDescription(
-        # Reported as `rsi`; its scale varies by sock model (Sock 2 is a
-        # negative dBm RSSI, Sock 3 reports a small positive magnitude), so it
-        # is exposed as a neutral unitless "Signal" value rather than being
+        # Estimated battery runtime from REAL_TIME_VITALS `btt` (minutes).
+        key="battery_time_remaining",
+        translation_key="battery_time_remaining",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda sock: sock.battery_time_remaining,
+    ),
+    OwletSensorDescription(
+        # `rsi` is the Wi-Fi signal (per the app's API). Its scale varies by
+        # model, so it is exposed as a neutral unitless value rather than being
         # mislabelled as a dBm signal-strength reading.
         key="signal_strength",
-        translation_key="signal",
-        icon="mdi:signal",
+        translation_key="wifi_signal",
+        icon="mdi:wifi",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,

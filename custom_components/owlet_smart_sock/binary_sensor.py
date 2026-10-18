@@ -71,6 +71,24 @@ BINARY_SENSORS: tuple[OwletBinarySensorDescription, ...] = (
         value_fn=lambda sock: sock.alerts.get("low_oxygen"),
     ),
     OwletBinarySensorDescription(
+        key="high_oxygen",
+        translation_key="high_oxygen",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda sock: sock.alerts.get("high_oxygen"),
+    ),
+    OwletBinarySensorDescription(
+        key="lost_power",
+        translation_key="lost_power",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda sock: sock.alerts.get("lost_power"),
+    ),
+    OwletBinarySensorDescription(
+        key="sock_off",
+        translation_key="sock_off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda sock: sock.alerts.get("sock_off"),
+    ),
+    OwletBinarySensorDescription(
         key="sock_disconnected",
         translation_key="sock_disconnected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
