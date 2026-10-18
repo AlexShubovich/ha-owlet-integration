@@ -29,3 +29,7 @@ jobs:
         uses: hacs/action@main
         with:
           category: integration
+          # 'brands' requires the domain to be added to the
+          # home-assistant/brands repository (external PR with the official
+          # Owlet icon). Skipped until/unless that submission is made.
+          ignore: brands
