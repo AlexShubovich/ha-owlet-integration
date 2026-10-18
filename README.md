@@ -96,7 +96,7 @@ Each sock is added as a device with the following entities:
 
 | Entity | Description |
 | --- | --- |
-| Status | `monitoring`, `charging`, `charged`, `no_signal`, `disconnected`, or `error` |
+| Status | `monitoring`, `charging`, `charged`, `no_signal`, `disconnected`, or `error`. **`disconnected`** = the base station is offline (Ayla reports it offline, or vitals stop updating); **`no_signal`** = base on but the sock isn't getting a reading (e.g. off the baby) |
 | Heart rate | Beats per minute (while monitoring) |
 | Oxygen saturation | SpO₂ % (while monitoring) |
 | Movement | Movement % (while monitoring) |

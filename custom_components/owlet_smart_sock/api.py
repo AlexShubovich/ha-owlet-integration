@@ -59,6 +59,14 @@ CMD_ALERT_PAUSE = "ALRT_PAUSE_CMD"
 # we throttle it rather than posting it on every (as fast as 3s) poll.
 APP_ACTIVE_INTERVAL = 20
 
+# devices.json carries the Ayla connection_status; the app polls it ~15s. We
+# refresh it on that cadence to detect a base station going offline.
+DEVICE_REFRESH_INTERVAL = 15
+
+# If REAL_TIME_VITALS has not updated in this long, the base station has
+# stopped reporting (disconnected) even if connection_status still lags.
+STALE_AFTER = 120
+
 
 class OwletError(Exception):
     """Base error for the Owlet client."""
@@ -125,6 +133,8 @@ class OwletClient:
         self._auth_lock = asyncio.Lock()
         self._devices: list[OwletDevice] = []
         self._last_active: dict[str, float] = {}
+        self._connection_status: dict[str, str] = {}
+        self._last_device_refresh = 0.0
         # Once credentials are rejected we refuse to contact the login
         # endpoints again. Owlet/Firebase rate-limit and can lock an account
         # for a long time if bad credentials are retried in a loop. The flag is
@@ -302,11 +312,14 @@ class OwletClient:
         """Discover every sock registered to the account."""
         raw = await self._api_get("/devices.json")
         devices: list[OwletDevice] = []
+        status: dict[str, str] = {}
         for entry in raw or []:
             device = entry.get("device", {})
             dsn = device.get("dsn")
             if not dsn:
                 continue
+            if device.get("connection_status"):
+                status[dsn] = device["connection_status"]
             devices.append(
                 OwletDevice(
                     dsn=dsn,
@@ -318,7 +331,23 @@ class OwletClient:
                 )
             )
         self._devices = devices
+        self._connection_status = status
+        self._last_device_refresh = time.time()
         return devices
+
+    async def async_refresh_connection_status(self) -> None:
+        """Re-read devices.json for fresh connection_status, throttled ~15s."""
+        now = time.time()
+        if (
+            self._connection_status
+            and now - self._last_device_refresh < DEVICE_REFRESH_INTERVAL
+        ):
+            return
+        try:
+            await self.async_get_devices()
+        except OwletConnectionError as err:
+            # Keep the previous statuses; staleness still catches an outage.
+            _LOGGER.debug("Could not refresh connection status: %s", err)
 
     async def _async_activate_sock(self, dsn: str) -> None:
         """Send the APP_ACTIVE heartbeat, throttled to ~20s like the app."""
@@ -373,7 +402,7 @@ class OwletClient:
             if name:
                 props[name] = prop
 
-        return _parse_vitals(dsn, props)
+        return _parse_vitals(dsn, props, self._connection_status.get(dsn))
 
 
 def _prop_value(props: dict[str, dict[str, Any]], name: str) -> Any:
@@ -404,7 +433,11 @@ def _as_float(value: Any) -> float | None:
         return None
 
 
-def _parse_vitals(dsn: str, props: dict[str, dict[str, Any]]) -> OwletSockData:
+def _parse_vitals(
+    dsn: str,
+    props: dict[str, dict[str, Any]],
+    connection_status: str | None = None,
+) -> OwletSockData:
     """Translate raw Ayla properties into an :class:`OwletSockData`.
 
     Handles both Smart Sock 3 (a single ``REAL_TIME_VITALS`` JSON blob) and
@@ -482,23 +515,31 @@ def _parse_vitals(dsn: str, props: dict[str, dict[str, Any]]) -> OwletSockData:
         or (not bpm_ok and not spo2_ok)
     )
 
-    # Decide the overall status, charge state first. Some firmware reports
-    # base_station_on = 0 even while the sock sits charged on the base, so the
-    # charge status is the most reliable "it's on the dock" signal and must
-    # win over the base-station / disconnected heuristics.
-    if not low_integrity:
+    # Base-station disconnected: the Ayla cloud reports the device offline, or
+    # REAL_TIME_VITALS has stopped updating (properties.json keeps returning the
+    # last cached values when the base loses power/Wi-Fi). This is the only
+    # reliable disconnect signal - `bso` can read 0 even while on the base - so
+    # it takes precedence over every other state.
+    offline = bool(
+        connection_status and connection_status.lower() != "online"
+    )
+    stale = bool(
+        updated_at
+        and (time.time() - updated_at.timestamp()) > STALE_AFTER
+    )
+
+    if offline or stale:
+        status = STATUS_DISCONNECTED
+    elif not low_integrity:
         # Valid heart-rate / oxygen readings: actively monitoring the baby.
         status = STATUS_MONITORING
     elif charge_status == 1:
         status = STATUS_CHARGING
     elif charge_status == 2:
         status = STATUS_CHARGED
-    elif base_station_on:
-        # Powered on the base but not getting a reading (e.g. off the baby).
-        status = STATUS_NO_SIGNAL
     else:
-        # No reading, not charging, base station not on -> genuinely offline.
-        status = STATUS_DISCONNECTED
+        # Base reporting, but no reading (e.g. sock off the baby).
+        status = STATUS_NO_SIGNAL
 
     monitoring = status == STATUS_MONITORING
 

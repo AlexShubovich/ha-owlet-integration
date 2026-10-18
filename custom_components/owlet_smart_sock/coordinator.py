@@ -75,6 +75,10 @@ class OwletCoordinator(DataUpdateCoordinator[dict[str, OwletSockData]]):
             if not self.client.devices:
                 await self.client.async_get_devices()
 
+            # Refresh connection_status (throttled) so a base station going
+            # offline is reflected as "disconnected".
+            await self.client.async_refresh_connection_status()
+
             data: dict[str, OwletSockData] = {}
             for device in self.client.devices:
                 data[device.dsn] = await self.client.async_get_vitals(
